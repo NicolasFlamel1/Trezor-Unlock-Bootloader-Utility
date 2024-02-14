@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+
+	<script>
+	
+		// Use strict
+		"use strict";
+		
+		
+		// Main function
+		window.addEventListener("DOMContentLoaded", function() {
+		
+			// Get form
+			const form = document.querySelector("form");
+			
+			// Get alerts
+			const alerts = document.querySelector("div");
+			
+			// Form submit event
+			form.addEventListener("submit", async function(event) {
+			
+				// Get button
+				const button = document["activeElement"];
+			
+				// Prevent default
+				event.preventDefault();
+				
+				// Disable button
+				button["disabled"] = true;
+				
+				// Loop while alerts has an alert
+				while(alerts["firstChild"] !== null) {
+				
+					// Remove alert from alerts
+					alerts.removeChild(alerts["firstChild"]);
+				}
+				
+				// Add alert
+				addAlert("Unlocking bootloader…");
+				
+				// Try
+				try {
+				
+					// Request device
+					const device = await navigator["usb"].requestDevice({
+					
+						// Filters
+						"filters": [{
+							
+							// Vendor ID
+							"vendorId": 0x1209,
+							
+							// Product ID
+							"productId": 0x53C0
+						}]
+					});
+					
+					// Open device
+					await device.open();
+					
+					// Select configuration
+					await device.selectConfiguration(1);
+					
+					// Try
+					try {
+					
+						// Reset device
+						await device.reset();
+					}
+					
+					// Catch errors
+					catch(error) {
+					
+					}
+					
+					// Claim interface
+					await device.claimInterface(0);
+					
+					// Create packet
+					const packet = new Uint8Array(64);
+					packet.set(new Uint8Array([0x3F, 0x23, 0x23, 0x00, 0x60, 0x00, 0x00, 0x00, 0x00]));
+					
+					// Send packet to the device
+					await device.transferOut(1, packet);
+					
+					// Add alert
+					addAlert("Confirm unlocking the bootloader on your hardware wallet by pressing both buttons at once on it.");
+					
+					// Get response from the device
+					const response = new Uint8Array((await device.transferIn(1, 64))["data"]["buffer"]);
+					
+					// Check if response wasn't success
+					if(((response[3] << 8) | response[4]) !== 2) {
+					
+						// Throw error
+						throw "Received a non-successful response from the hardware wallet.";
+					} 
+					
+					// Add alert
+					addAlert("Bootloader successfully unlocked.");
+				}
+				
+				// Catch errors
+				catch(error) {
+				
+					// Add alert
+					addAlert(error);
+					
+					// Add alert
+					addAlert("Unlocking bootloader failed.");
+				}
+				
+				// Enable button
+				button["disabled"] = false;
+			});
+		});
+		
+		
+		// Supporting function implementation
+		
+		// Add alert
+		function addAlert(text) {
+		
+			// Get alerts
+			const alerts = document.querySelector("div");
+		
+			// Create alert
+			const alert = document.createElement("p");
+			
+			// Add alert to alerts
+			alerts.appendChild(alert);
+			
+			// Set alert's text
+			alert["textContent"] = text;
+		}
+	</script>
+</head>
+<body>
+	<h3>Trezor Unlock Bootloader Utility</h3>
+	<p>Go <a href="https://trezor.io/learn/a/unlocking-the-bootloader-on-trezor-safe-3">here</a> if you want to learn more about what unlocking a Trezor hardware wallet's bootloader entails. You can unlock your hardware wallet's bootloader by following these steps:</p>
+	<ol>
+		<li>Switch your hardware wallet into bootloader mode by holding down both its buttons when it's powered on.</li>
+		<li>Choose to install a firmware on your hardware wallet by pressing the corresponding button on it.</li>
+		<li>Click the unlock bootloader button on this page and select your hardware wallet when prompted.</li>
+	</ol>
+	<form>
+		<button>Unlock bootloader</button>
+	</form>
+	<div>
+	</div>
+</body>
+</html>
